@@ -16,6 +16,7 @@ public class BlackMarketManager : MonoBehaviour
     [Header("Reference")]
     public GameTimeManager gameTime;
     public PlayerInventoryV2 inventoryV2;
+    public PlayerWallet wallet;
 
     [Header("Market Pool (InventoryItemData assets)")]
     public List<InventoryItemData> possibleItems = new List<InventoryItemData>();
@@ -24,9 +25,6 @@ public class BlackMarketManager : MonoBehaviour
     public int refreshEveryDays = 3;
     public int offersPerRefresh = 4;
 
-    [Header("Player Economy")]
-    public int playerCash = 10000;
-
     private int lastRefreshDay = 1;
     private readonly List<MarketOffer> currentOffers = new List<MarketOffer>();
 
@@ -34,11 +32,14 @@ public class BlackMarketManager : MonoBehaviour
     {
         if (gameTime == null) gameTime = FindObjectOfType<GameTimeManager>();
         if (inventoryV2 == null) inventoryV2 = FindObjectOfType<PlayerInventoryV2>();
+        if (wallet == null) wallet = FindObjectOfType<PlayerWallet>();
 
         GenerateOffers();
         lastRefreshDay = gameTime != null ? gameTime.day : 1;
 
-        Debug.Log($"[Cash] Start cash: ${playerCash}");
+        if (wallet != null)
+            Debug.Log($"[Cash] Start cash: ${wallet.cash}");
+
         Debug.Log("Nákup blackmarketu probíhá pouze přes UI terminál (počítač).");
     }
 
@@ -84,7 +85,9 @@ public class BlackMarketManager : MonoBehaviour
             Debug.Log($"[{currentOffers.Count}] {offer.partName} | Cena: ${offer.price} | Scam risk: {offer.scamRisk:P0}");
         }
 
-        Debug.Log($"[Cash] ${playerCash}");
+        if (wallet != null)
+            Debug.Log($"[Cash] ${wallet.cash}");
+
         Debug.Log("Pro nákup použij tlačítka v Shop UI.");
     }
 
@@ -104,20 +107,26 @@ public class BlackMarketManager : MonoBehaviour
             return;
         }
 
-        if (playerCash < offer.price)
-        {
-            Debug.LogWarning($"Nedostatek peněz na {offer.partName}. Potřebuješ ${offer.price}, máš ${playerCash}");
-            return;
-        }
-
         if (inventoryV2 == null)
         {
             Debug.LogError("BlackMarketManager: missing PlayerInventoryV2 reference.");
             return;
         }
 
+        if (wallet == null)
+        {
+            Debug.LogError("BlackMarketManager: missing PlayerWallet reference.");
+            return;
+        }
+
+        if (!wallet.CanAfford(offer.price))
+        {
+            Debug.LogWarning($"Nedostatek peněz na {offer.partName}. Potřebuješ ${offer.price}, máš ${wallet.cash}");
+            return;
+        }
+
         // Zaplatíš vždy
-        playerCash -= offer.price;
+        wallet.TrySpend(offer.price);
 
         // Scam roll
         float roll = Random.value;
@@ -141,7 +150,7 @@ public class BlackMarketManager : MonoBehaviour
             Debug.Log($"ÚSPĚCH! Koupil jsi {offer.partName} za ${offer.price}. Zásilka dorazila do inventáře. (roll {roll:F2})");
         }
 
-        Debug.Log($"[Cash] Zůstatek: ${playerCash}");
+        Debug.Log($"[Cash] Zůstatek: ${wallet.cash}");
     }
 
     // ===== PUBLIC API pro UI =====
@@ -173,7 +182,12 @@ public class BlackMarketManager : MonoBehaviour
 
     public void AddCash(int amount)
     {
-        playerCash += amount;
-        Debug.Log($"[Cash] +${amount} => ${playerCash}");
+        if (wallet == null)
+        {
+            Debug.LogError("BlackMarketManager: missing PlayerWallet reference.");
+            return;
+        }
+
+        wallet.AddCash(amount);
     }
 }

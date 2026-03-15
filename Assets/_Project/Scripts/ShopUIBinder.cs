@@ -4,12 +4,14 @@ using TMPro;
 public class ShopUIBinder : MonoBehaviour
 {
     public BlackMarketManager market;
+    public PlayerWallet wallet;
     public TextMeshProUGUI offersText;
     public TextMeshProUGUI cashText;
 
     void Start()
     {
         if (market == null) market = FindObjectOfType<BlackMarketManager>();
+        if (wallet == null) wallet = FindObjectOfType<PlayerWallet>();
         Refresh();
     }
 
@@ -22,7 +24,6 @@ public class ShopUIBinder : MonoBehaviour
     public void BuyOffer(int index)
     {
         if (market == null) return;
-        // BlackMarketManager.TryBuyOffer je private v tvém kódu -> uděláme public wrapper níž
         market.BuyOfferFromUI(index);
         Refresh();
     }
@@ -31,8 +32,8 @@ public class ShopUIBinder : MonoBehaviour
     {
         if (market == null) return;
 
-        if (cashText != null)
-            cashText.text = $"Cash: ${market.playerCash}";
+        if (cashText != null && wallet != null)
+            cashText.text = $"Cash: ${wallet.cash}";
 
         if (offersText != null)
             offersText.text = market.GetOffersDebugText();
