@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acd0504d8ff98dd4ea624e115ff3515b, type: 3}
+  m_Name: AR15_Barrel_16in_US
+  m_EditorClassIdentifier: Assembly-CSharp::GunPart
+  partName: AR-15 Barrel 16" Government
+  partType: 2
+  countryOfOrigin: USA
+  price: 220
+  description: 16-inch 5.56 NATO barrel, government profile.
+  image: {fileID: 0}
+  platformTag: AR15
