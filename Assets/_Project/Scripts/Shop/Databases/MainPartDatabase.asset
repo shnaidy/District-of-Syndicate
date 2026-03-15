@@ -14,3 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShopPartDatabase
   parts:
   - {fileID: 11400000, guid: b94542888b68cb146b2bc27907f4f842, type: 2}
+  - {fileID: 11400000, guid: b94542888b68cb146b2bc27907f4f842, type: 2}
+  - {fileID: 11400000, guid: b94542888b68cb146b2bc27907f4f842, type: 2}
+  - {fileID: 11400000, guid: b94542888b68cb146b2bc27907f4f842, type: 2}
+  - {fileID: 11400000, guid: b94542888b68cb146b2bc27907f4f842, type: 2}

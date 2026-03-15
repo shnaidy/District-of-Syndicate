@@ -35,7 +35,6 @@ public class PlayerInventoryV2 : MonoBehaviour
 
         if (data.stackable)
         {
-            // try stack into existing compatible stacks
             int remaining = incoming.amount;
 
             foreach (var existing in items)
@@ -55,7 +54,6 @@ public class PlayerInventoryV2 : MonoBehaviour
                 }
             }
 
-            // create new stacks for remaining amount
             while (remaining > 0)
             {
                 int chunk = Mathf.Min(remaining, data.maxStack);
@@ -69,7 +67,6 @@ public class PlayerInventoryV2 : MonoBehaviour
         }
         else
         {
-            // non-stackable => one instance per piece
             for (int i = 0; i < amount; i++)
             {
                 var one = CreateInstance(data, 1, durability01, countryOfOrigin, source, boughtPrice, serialNumber);
@@ -114,7 +111,6 @@ public class PlayerInventoryV2 : MonoBehaviour
 
         int remaining = amount;
 
-        // remove from stacks first (largest stacks first can reduce fragmentation)
         var matches = items
             .Where(i => i.data != null && i.data.itemId == itemId)
             .OrderByDescending(i => i.amount)
@@ -157,6 +153,19 @@ public class PlayerInventoryV2 : MonoBehaviour
 
     public int GetTotalItemCount() => items.Sum(i => Mathf.Max(0, i.amount));
 
+    // ---------- NEW HELPERS FOR WORKBENCH ----------
+    public int GetTotalCountByData(InventoryItemData data)
+    {
+        if (data == null) return 0;
+        return items.Where(i => i.data == data).Sum(i => i.amount);
+    }
+
+    public bool RemoveItemsByData(InventoryItemData data, int amount = 1)
+    {
+        if (data == null || amount <= 0) return false;
+        return RemoveByItemId(data.itemId, amount);
+    }
+
     public void ClearAll()
     {
         items.Clear();
@@ -189,7 +198,6 @@ public class PlayerInventoryV2 : MonoBehaviour
 
     private static string GenerateSerial()
     {
-        // short readable serial
         return $"SN-{UnityEngine.Random.Range(100000, 999999)}";
     }
 

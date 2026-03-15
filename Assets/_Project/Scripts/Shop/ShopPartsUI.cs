@@ -11,9 +11,7 @@ public class ShopPartsUI : MonoBehaviour
     [Header("External refs")]
     public PlayerInventoryV2 inventoryV2;
     public GunPartInventoryMap inventoryMap;
-
-    [Header("Economy")]
-    public int playerCash = 10000;
+    public PlayerWallet wallet;
 
     [Header("Left column (part types)")]
     public Transform typesContainer;
@@ -41,6 +39,12 @@ public class ShopPartsUI : MonoBehaviour
     private readonly List<Button> spawnedPartButtons = new();
 
     private GunPart selectedPart;
+
+    private void Start()
+    {
+        if (wallet == null) wallet = FindObjectOfType<PlayerWallet>();
+        if (inventoryV2 == null) inventoryV2 = FindObjectOfType<PlayerInventoryV2>();
+    }
 
     private void OnEnable()
     {
@@ -132,7 +136,13 @@ public class ShopPartsUI : MonoBehaviour
             return;
         }
 
-        if (playerCash < selectedPart.price)
+        if (wallet == null)
+        {
+            Debug.LogWarning("[ShopPartsUI] wallet reference missing.");
+            return;
+        }
+
+        if (!wallet.CanAfford(selectedPart.price))
         {
             Debug.Log("[Shop] Not enough cash.");
             RefreshBuyButtonUI();
@@ -145,7 +155,8 @@ public class ShopPartsUI : MonoBehaviour
             return;
         }
 
-        playerCash -= selectedPart.price;
+        bool spent = wallet.TrySpend(selectedPart.price);
+        if (!spent) return;
 
         inventoryV2.AddItem(
             data: itemData,
@@ -180,7 +191,10 @@ public class ShopPartsUI : MonoBehaviour
 
     private void RefreshCashUI()
     {
-        if (cashText) cashText.text = $"Cash: ${playerCash}";
+        if (cashText == null) return;
+
+        if (wallet == null) cashText.text = "Cash: -";
+        else cashText.text = $"Cash: ${wallet.cash}";
     }
 
     private void RefreshInventoryUI()
@@ -199,7 +213,7 @@ public class ShopPartsUI : MonoBehaviour
     private void RefreshBuyButtonUI()
     {
         bool hasSelection = selectedPart != null;
-        bool canAfford = hasSelection && playerCash >= selectedPart.price;
+        bool canAfford = hasSelection && wallet != null && wallet.CanAfford(selectedPart.price);
 
         if (buyButton) buyButton.gameObject.SetActive(hasSelection);
         if (buyButton) buyButton.interactable = canAfford;
