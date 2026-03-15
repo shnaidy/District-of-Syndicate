@@ -6,7 +6,7 @@ public class SellingManager : MonoBehaviour
     public InventoryManager inventory;
     public GameTimeManager gameTime;
     public HeatManager heatManager;
-    public BlackMarketManager blackMarket;
+    public PlayerWallet wallet;
 
     [Header("Sell Settings")]
     public string weaponToSell = "AK-47";
@@ -22,7 +22,7 @@ public class SellingManager : MonoBehaviour
         if (inventory == null) inventory = FindObjectOfType<InventoryManager>();
         if (gameTime == null) gameTime = FindObjectOfType<GameTimeManager>();
         if (heatManager == null) heatManager = FindObjectOfType<HeatManager>();
-        if (blackMarket == null) blackMarket = FindObjectOfType<BlackMarketManager>();
+        if (wallet == null) wallet = FindObjectOfType<PlayerWallet>();
 
         Debug.Log("Selling: stiskni P pro prodej AK-47");
     }
@@ -37,7 +37,7 @@ public class SellingManager : MonoBehaviour
 
     void TrySellWeapon()
     {
-        if (inventory == null || gameTime == null || blackMarket == null)
+        if (inventory == null || gameTime == null || wallet == null)
         {
             Debug.LogError("SellingManager: chybí reference.");
             return;
@@ -53,7 +53,7 @@ public class SellingManager : MonoBehaviour
         int sellPrice = isNight ? nightSellPrice : daySellPrice;
 
         inventory.RemoveItem(weaponToSell, 1);
-        blackMarket.playerCash += sellPrice;
+        wallet.AddCash(sellPrice);
 
         if (heatManager != null)
         {
@@ -65,7 +65,7 @@ public class SellingManager : MonoBehaviour
             ? $"NOČNÍ DEAL: Prodal jsi {weaponToSell} za ${sellPrice}. (vyšší risk)"
             : $"DENNÍ PRODEJ: Prodal jsi {weaponToSell} za ${sellPrice}. (nižší risk)");
 
-        Debug.Log($"[Cash] Nový zůstatek: ${blackMarket.playerCash}");
+        Debug.Log($"[Cash] Nový zůstatek: ${wallet.cash}");
 
         if (heatManager != null)
             Debug.Log($"[HEAT] Aktuálně: {heatManager.currentHeat:0.0}/{heatManager.maxHeat}");
