@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -32,7 +33,24 @@ public class BlackMarketManager : MonoBehaviour
     private int lastRefreshDay = 1;
     private readonly List<MarketOffer> currentOffers = new List<MarketOffer>();
     private static readonly string[] DeliveryPoints = { "Dock North", "Dock South", "Airport Cargo" };
+    private static readonly char[] NameSeparators = { ' ', '-', '_', '.', '/', '\\' };
+    private const float AirportHandoverRiskMin = 0.12f;
+    private const float AirportHandoverRiskMax = 0.25f;
+    private const float DockHandoverRiskMin = 0.03f;
+    private const float DockHandoverRiskMax = 0.12f;
+
     private static float GetTotalRisk(MarketOffer offer) => Mathf.Clamp01(offer.scamRisk + offer.handoverRisk);
+    private static bool HasToken(string raw, string token)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || string.IsNullOrWhiteSpace(token)) return false;
+        string[] parts = raw.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (parts[i] == token) return true;
+        }
+
+        return false;
+    }
 
     void Start()
     {
@@ -88,11 +106,11 @@ public class BlackMarketManager : MonoBehaviour
 
             string partNameLower = offer.partName.ToLowerInvariant();
             bool isBarrel = partNameLower.Contains("barrel");
-            bool isMag = partNameLower.Contains("mag");
+            bool isMag = HasToken(partNameLower, "mag") || partNameLower.Contains("magazine");
             bool isBodyOrStock =
-                partNameLower.Contains("body") ||
+                HasToken(partNameLower, "body") ||
                 partNameLower.Contains("receiver") ||
-                partNameLower.Contains("stock");
+                HasToken(partNameLower, "stock");
 
             if (isBarrel)
             {
@@ -124,8 +142,8 @@ public class BlackMarketManager : MonoBehaviour
             }
 
             offer.handoverRisk = offer.deliveryPoint == "Airport Cargo"
-                ? Random.Range(0.12f, 0.25f)
-                : Random.Range(0.03f, 0.12f);
+                ? Random.Range(AirportHandoverRiskMin, AirportHandoverRiskMax)
+                : Random.Range(DockHandoverRiskMin, DockHandoverRiskMax);
 
             currentOffers.Add(offer);
             float totalRisk = GetTotalRisk(offer);
