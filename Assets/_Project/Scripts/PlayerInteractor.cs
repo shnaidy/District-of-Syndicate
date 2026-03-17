@@ -12,6 +12,7 @@ public class PlayerInteractor : MonoBehaviour
     public TextMeshProUGUI promptText;
 
     private IInteractable currentInteractable;
+    private bool hasLoggedMissingCameraWarning;
 
     void Start()
     {
@@ -32,6 +33,24 @@ public class PlayerInteractor : MonoBehaviour
     void CheckInteractable()
     {
         currentInteractable = null;
+
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main;
+            if (playerCamera == null)
+            {
+                if (!hasLoggedMissingCameraWarning)
+                {
+                    Debug.LogWarning("[PlayerInteractor] Missing playerCamera and Camera.main is null.");
+                    hasLoggedMissingCameraWarning = true;
+                }
+
+                HidePrompt();
+                return;
+            }
+        }
+
+        hasLoggedMissingCameraWarning = false;
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactLayer))
