@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -9,8 +10,12 @@ public class BlackMarketManager : MonoBehaviour
     {
         public InventoryItemData itemData; // item, který se přidá do PlayerInventoryV2
         public string partName;            // jen display
+        public string supplierName;
+        public string countryOfOrigin;
+        public string deliveryPoint;
         public int price;
-        public float scamRisk; // 0.0 - 1.0
+        public float scamRisk;      // 0.0 - 1.0 (dodavatel tě ojebe)
+        public float handoverRisk;  // 0.0 - 1.0 (riziko převzetí zásilky)
     }
 
     [Header("Reference")]
@@ -27,6 +32,28 @@ public class BlackMarketManager : MonoBehaviour
 
     private int lastRefreshDay = 1;
     private readonly List<MarketOffer> currentOffers = new List<MarketOffer>();
+    private static readonly string[] DeliveryPoints = { "Dock North", "Dock South", "Airport Cargo" };
+    private static readonly char[] NameSeparators = { ' ', '-', '_', '.', '/', '\\' };
+    private const float AirportHandoverRiskMin = 0.12f;
+    private const float AirportHandoverRiskMax = 0.25f;
+    private const float DockHandoverRiskMin = 0.03f;
+    private const float DockHandoverRiskMax = 0.12f;
+
+    private static float GetScamRisk(MarketOffer offer) => Mathf.Clamp01(offer.scamRisk);
+    private static float GetEffectiveHandoverRisk(MarketOffer offer) => Mathf.Clamp01(Mathf.Min(offer.handoverRisk, 1f - GetScamRisk(offer)));
+    private static float GetTotalRisk(MarketOffer offer) => GetScamRisk(offer) + GetEffectiveHandoverRisk(offer);
+
+    private static bool HasToken(string raw, string token)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || string.IsNullOrWhiteSpace(token)) return false;
+        string[] parts = raw.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (string.Equals(parts[i], token, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+
+        return false;
+    }
 
     void Start()
     {
@@ -77,12 +104,53 @@ public class BlackMarketManager : MonoBehaviour
             {
                 itemData = picked,
                 partName = string.IsNullOrWhiteSpace(picked.displayName) ? picked.name : picked.displayName,
-                price = Random.Range(500, 3000),
-                scamRisk = Random.Range(0.05f, 0.35f)
+                deliveryPoint = DeliveryPoints[Random.Range(0, DeliveryPoints.Length)]
             };
 
+            string partNameLower = offer.partName.ToLowerInvariant();
+            bool isBarrel = partNameLower.Contains("barrel");
+            bool isMag = HasToken(partNameLower, "mag") || partNameLower.Contains("magazine");
+            bool isBodyOrStock =
+                HasToken(partNameLower, "body") ||
+                partNameLower.Contains("receiver") ||
+                HasToken(partNameLower, "stock");
+
+            if (isBarrel)
+            {
+                offer.supplierName = "Levant Forge";
+                offer.countryOfOrigin = "Israel";
+                offer.price = Random.Range(1800, 3500);
+                offer.scamRisk = Random.Range(0.10f, 0.28f);
+            }
+            else if (isMag)
+            {
+                offer.supplierName = "Volga Steel";
+                offer.countryOfOrigin = "Russia";
+                offer.price = Random.Range(700, 1700);
+                offer.scamRisk = Random.Range(0.08f, 0.22f);
+            }
+            else if (isBodyOrStock)
+            {
+                offer.supplierName = "Baltic Frames";
+                offer.countryOfOrigin = "Poland";
+                offer.price = Random.Range(1200, 2600);
+                offer.scamRisk = Random.Range(0.07f, 0.20f);
+            }
+            else
+            {
+                offer.supplierName = "Grey Broker";
+                offer.countryOfOrigin = "Unknown";
+                offer.price = Random.Range(500, 3000);
+                offer.scamRisk = Random.Range(0.05f, 0.35f);
+            }
+
+            offer.handoverRisk = offer.deliveryPoint == "Airport Cargo"
+                ? Random.Range(AirportHandoverRiskMin, AirportHandoverRiskMax)
+                : Random.Range(DockHandoverRiskMin, DockHandoverRiskMax);
+
             currentOffers.Add(offer);
-            Debug.Log($"[{currentOffers.Count}] {offer.partName} | Cena: ${offer.price} | Scam risk: {offer.scamRisk:P0}");
+            float totalRisk = GetTotalRisk(offer);
+            Debug.Log($"[{currentOffers.Count}] {offer.partName} | {offer.countryOfOrigin} | {offer.supplierName} | {offer.deliveryPoint} | Cena: ${offer.price} | Risk: {totalRisk:P0}");
         }
 
         if (wallet != null)
@@ -130,11 +198,18 @@ public class BlackMarketManager : MonoBehaviour
 
         // Scam roll
         float roll = Random.value;
-        bool scammed = roll < offer.scamRisk;
+        float scamRisk = GetScamRisk(offer);
+        float totalRisk = GetTotalRisk(offer);
+        bool scammed = roll < scamRisk;
+        bool failedHandover = roll >= scamRisk && roll < totalRisk;
 
         if (scammed)
         {
             Debug.LogWarning($"SCAM! Zaplatil jsi ${offer.price} za {offer.partName}, ale nic nedorazilo. (roll {roll:F2})");
+        }
+        else if (failedHandover)
+        {
+            Debug.LogWarning($"PŘEVZETÍ SELHALO! {offer.partName} ({offer.countryOfOrigin}) bylo zabaveno při vyzvednutí na {offer.deliveryPoint}. (roll {roll:F2})");
         }
         else
         {
@@ -142,12 +217,12 @@ public class BlackMarketManager : MonoBehaviour
                 data: offer.itemData,
                 amount: 1,
                 durability01: 1f,
-                countryOfOrigin: "",
-                source: "BlackMarket",
+                countryOfOrigin: offer.countryOfOrigin,
+                source: $"BlackMarket/{offer.supplierName}/{offer.deliveryPoint}",
                 boughtPrice: offer.price
             );
 
-            Debug.Log($"ÚSPĚCH! Koupil jsi {offer.partName} za ${offer.price}. Zásilka dorazila do inventáře. (roll {roll:F2})");
+            Debug.Log($"ÚSPĚCH! Koupil jsi {offer.partName} ({offer.countryOfOrigin}) od {offer.supplierName} za ${offer.price}. Zásilka dorazila přes {offer.deliveryPoint}. (roll {roll:F2})");
         }
 
         Debug.Log($"[Cash] Zůstatek: ${wallet.cash}");
@@ -168,7 +243,8 @@ public class BlackMarketManager : MonoBehaviour
         for (int i = 0; i < currentOffers.Count; i++)
         {
             var o = currentOffers[i];
-            sb.AppendLine($"{i}: {o.partName} | ${o.price} | risk {o.scamRisk:P0}");
+            float totalRisk = GetTotalRisk(o);
+            sb.AppendLine($"{i}: {o.partName} ({o.countryOfOrigin}) | {o.supplierName} | {o.deliveryPoint} | ${o.price} | risk {totalRisk:P0}");
         }
         return sb.ToString();
     }
