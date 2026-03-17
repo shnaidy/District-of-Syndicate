@@ -32,6 +32,7 @@ public class BlackMarketManager : MonoBehaviour
     private int lastRefreshDay = 1;
     private readonly List<MarketOffer> currentOffers = new List<MarketOffer>();
     private static readonly string[] DeliveryPoints = { "Dock North", "Dock South", "Airport Cargo" };
+    private static float GetTotalRisk(MarketOffer offer) => Mathf.Clamp01(offer.scamRisk + offer.handoverRisk);
 
     void Start()
     {
@@ -85,12 +86,13 @@ public class BlackMarketManager : MonoBehaviour
                 deliveryPoint = DeliveryPoints[Random.Range(0, DeliveryPoints.Length)]
             };
 
-            bool isBarrel = offer.partName.ToLowerInvariant().Contains("barrel");
-            bool isMag = offer.partName.ToLowerInvariant().Contains("mag");
+            string partNameLower = offer.partName.ToLowerInvariant();
+            bool isBarrel = partNameLower.Contains("barrel");
+            bool isMag = partNameLower.Contains("mag");
             bool isBodyOrStock =
-                offer.partName.ToLowerInvariant().Contains("body") ||
-                offer.partName.ToLowerInvariant().Contains("receiver") ||
-                offer.partName.ToLowerInvariant().Contains("stock");
+                partNameLower.Contains("body") ||
+                partNameLower.Contains("receiver") ||
+                partNameLower.Contains("stock");
 
             if (isBarrel)
             {
@@ -126,7 +128,7 @@ public class BlackMarketManager : MonoBehaviour
                 : Random.Range(0.03f, 0.12f);
 
             currentOffers.Add(offer);
-            float totalRisk = Mathf.Clamp01(offer.scamRisk + offer.handoverRisk);
+            float totalRisk = GetTotalRisk(offer);
             Debug.Log($"[{currentOffers.Count}] {offer.partName} | {offer.countryOfOrigin} | {offer.supplierName} | {offer.deliveryPoint} | Cena: ${offer.price} | Risk: {totalRisk:P0}");
         }
 
@@ -175,9 +177,9 @@ public class BlackMarketManager : MonoBehaviour
 
         // Scam roll
         float roll = Random.value;
-        float totalRisk = Mathf.Clamp01(offer.scamRisk + offer.handoverRisk);
+        float totalRisk = GetTotalRisk(offer);
         bool scammed = roll < offer.scamRisk;
-        bool failedHandover = !scammed && roll < totalRisk;
+        bool failedHandover = roll >= offer.scamRisk && roll < totalRisk;
 
         if (scammed)
         {
@@ -219,7 +221,7 @@ public class BlackMarketManager : MonoBehaviour
         for (int i = 0; i < currentOffers.Count; i++)
         {
             var o = currentOffers[i];
-            float totalRisk = Mathf.Clamp01(o.scamRisk + o.handoverRisk);
+            float totalRisk = GetTotalRisk(o);
             sb.AppendLine($"{i}: {o.partName} ({o.countryOfOrigin}) | {o.supplierName} | {o.deliveryPoint} | ${o.price} | risk {totalRisk:P0}");
         }
         return sb.ToString();
