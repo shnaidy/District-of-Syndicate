@@ -67,7 +67,7 @@ public class BlackMarketManager : MonoBehaviour
         if (wallet != null)
             Debug.Log($"[Cash] Start cash: ${wallet.cash}");
 
-        Debug.Log("Nákup blackmarketu probíhá pouze přes UI terminál (počítač).");
+        Debug.Log("Nákup na black marketu probíhá pouze přes UI terminál (počítač).");
     }
 
     void Update()
