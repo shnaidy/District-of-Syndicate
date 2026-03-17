@@ -39,14 +39,17 @@ public class BlackMarketManager : MonoBehaviour
     private const float DockHandoverRiskMin = 0.03f;
     private const float DockHandoverRiskMax = 0.12f;
 
-    private static float GetTotalRisk(MarketOffer offer) => Mathf.Clamp01(offer.scamRisk + offer.handoverRisk);
+    private static float GetScamRisk(MarketOffer offer) => Mathf.Clamp01(offer.scamRisk);
+    private static float GetEffectiveHandoverRisk(MarketOffer offer) => Mathf.Clamp01(Mathf.Min(offer.handoverRisk, 1f - GetScamRisk(offer)));
+    private static float GetTotalRisk(MarketOffer offer) => GetScamRisk(offer) + GetEffectiveHandoverRisk(offer);
+
     private static bool HasToken(string raw, string token)
     {
         if (string.IsNullOrWhiteSpace(raw) || string.IsNullOrWhiteSpace(token)) return false;
         string[] parts = raw.Split(NameSeparators, StringSplitOptions.RemoveEmptyEntries);
         for (int i = 0; i < parts.Length; i++)
         {
-            if (parts[i] == token) return true;
+            if (string.Equals(parts[i], token, StringComparison.OrdinalIgnoreCase)) return true;
         }
 
         return false;
@@ -195,9 +198,10 @@ public class BlackMarketManager : MonoBehaviour
 
         // Scam roll
         float roll = Random.value;
+        float scamRisk = GetScamRisk(offer);
         float totalRisk = GetTotalRisk(offer);
-        bool scammed = roll < offer.scamRisk;
-        bool failedHandover = roll >= offer.scamRisk && roll < totalRisk;
+        bool scammed = roll < scamRisk;
+        bool failedHandover = roll >= scamRisk && roll < totalRisk;
 
         if (scammed)
         {
